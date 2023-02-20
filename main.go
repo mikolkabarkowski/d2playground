@@ -20,6 +20,28 @@ import (
 
 func main() {
 	ctx := context.Background()
+	libExample(ctx) //tracksGen(ctx)
+}
+
+func tracksGen(ctx context.Context) {
+
+	f, _ := ioutil.ReadFile(filepath.Join("trackdescr.d2"))
+	ruler, _ := textmeasure.NewRuler()
+	script := string(f)
+	diagram, _, _ := d2lib.Compile(ctx, script, &d2lib.CompileOptions{
+		Layout: d2dagrelayout.DefaultLayout,
+		Ruler:  ruler,
+	})
+	out, _ := d2svg.Render(diagram, &d2svg.RenderOpts{
+		Pad:    d2svg.DEFAULT_PADDING,
+		Sketch: true,
+	})
+	_ = ioutil.WriteFile(filepath.Join("svg", "tracks-structure.svg"), out, 0600)
+	staticServing("./svg")
+
+}
+
+func libExample(ctx context.Context) {
 
 	// Start with a new, empty graph
 	_, graph, _ := d2lib.Compile(ctx, "", nil)
@@ -53,8 +75,7 @@ func main() {
 	}
 
 	_ = ioutil.WriteFile("out.d2", []byte(d2format.Format(graph.AST)), 0600)
-	staticServing()
-
+	staticServing("./svgs")
 }
 
 type Query struct {
@@ -121,9 +142,8 @@ func parseSQLCommand(command string) Query {
 	return q
 }
 
-
-func staticServing(){
-	fs := http.FileServer(http.Dir("./svgs"))
+func staticServing(dirpath string) {
+	fs := http.FileServer(http.Dir(dirpath))
 	http.Handle("/", fs)
 
 	log.Print("Listening on :3000...")
