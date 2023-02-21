@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -20,26 +21,88 @@ import (
 
 func main() {
 	ctx := context.Background()
-	libExample(ctx) //tracksGen(ctx)
-}
+	var rfiles []string
+	var rdirs []string
 
-func tracksGen(ctx context.Context) {
+	err := filepath.Walk(".", func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !(strings.Contains(path, ".git") || path == "." || strings.Contains(path, ".DS_Store")) {
+			if !strings.Contains(path, "/") {
+				if info.IsDir() {
 
-	f, _ := ioutil.ReadFile(filepath.Join("trackdescr.d2"))
+					rdirs = append(rdirs, path)
+
+				} else {
+					rfiles = append(rfiles, path)
+				}
+			}
+
+		}
+
+		return nil
+	})
+
+	script := generateScript(rdirs, rfiles)
 	ruler, _ := textmeasure.NewRuler()
-	script := string(f)
 	diagram, _, _ := d2lib.Compile(ctx, script, &d2lib.CompileOptions{
 		Layout: d2dagrelayout.DefaultLayout,
 		Ruler:  ruler,
 	})
+	if err != nil {
+		log.Println(err)
+	}
 	out, _ := d2svg.Render(diagram, &d2svg.RenderOpts{
 		Pad:    d2svg.DEFAULT_PADDING,
 		Sketch: true,
 	})
-	_ = ioutil.WriteFile(filepath.Join("svg", "tracks-structure.svg"), out, 0600)
+	_ = ioutil.WriteFile(filepath.Join("svg", "project-struct.svg"), out, 0600)
 	staticServing("./svg")
-
 }
+
+func generateScript(dirs []string, files []string) string {
+	script := `root: track-mono {
+		shape: page`
+	for _, d := range dirs {
+		d_full := strings.Split(d, ".")
+		d_id := d_full[0]
+		script = script + `
+		` + d_id + `: ` + d + `{
+			shape: package
+			style: {
+				fill: "#dad0e2"
+			}
+			
+		}`
+
+	}
+	for _, f := range files {
+		f_full := strings.Split(f, ".")
+		f_id := f_full[0]
+		script = script + `
+		` + f_id + `: ` + f + `{
+			shape: document
+			style: {
+				fill: "#d0e1e2"
+			}
+		}`
+
+	}
+	return script + `}`
+}
+func staticServing(dirpath string) {
+	fs := http.FileServer(http.Dir(dirpath))
+	http.Handle("/", fs)
+
+	log.Print("Listening on :3000...")
+	err := http.ListenAndServe(":3000", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+//lib example
 
 func libExample(ctx context.Context) {
 
@@ -140,15 +203,4 @@ func parseSQLCommand(command string) Query {
 	}
 
 	return q
-}
-
-func staticServing(dirpath string) {
-	fs := http.FileServer(http.Dir(dirpath))
-	http.Handle("/", fs)
-
-	log.Print("Listening on :3000...")
-	err := http.ListenAndServe(":3000", nil)
-	if err != nil {
-		log.Fatal(err)
-	}
 }
