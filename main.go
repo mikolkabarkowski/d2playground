@@ -21,6 +21,11 @@ import (
 
 func main() {
 	ctx := context.Background()
+	exampleOne(ctx)
+	//other examples, uncomment to test:
+	//libExample(ctx)
+}
+func exampleOne(ctx context.Context) {
 	var rfiles []string
 	var rdirs []string
 
@@ -45,6 +50,7 @@ func main() {
 	})
 
 	script := generateScript(rdirs, rfiles)
+	fmt.Println(script)
 	ruler, _ := textmeasure.NewRuler()
 	diagram, _, _ := d2lib.Compile(ctx, script, &d2lib.CompileOptions{
 		Layout: d2dagrelayout.DefaultLayout,
@@ -62,7 +68,9 @@ func main() {
 }
 
 func generateScript(dirs []string, files []string) string {
-	script := `root: track-mono {
+	script := `
+	direction: right
+	root: track-mono {
 		shape: page`
 	for _, d := range dirs {
 		d_full := strings.Split(d, ".")
@@ -101,8 +109,6 @@ func staticServing(dirpath string) {
 		log.Fatal(err)
 	}
 }
-
-//lib example
 
 func libExample(ctx context.Context) {
 
